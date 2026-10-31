@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Icon Studio — 10 UI Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=Archivo+Narrow:wght@600;700&family=Bricolage+Grotesque:opsz,wght@12,400;12,700;12,800&family=Fraunces:ital,opsz,wght@0,9,400;0,9,600;1,9,500&family=IBM+Plex+Mono:wght@400;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;700&family=Space+Mono:wght@400;700&family=Spectral:ital,wght@0,400;0,600;1,500&family=Syne:wght@600;800&family=Unbounded:wght@500;800&display=swap" rel="stylesheet">
+<style>
+:root{ color-scheme: dark; }
+*{box-sizing:border-box}
+body{
+  margin:0; background:#0c0c0e; color:#eceae4;
+  font-family:'Archivo',system-ui,sans-serif;
+  background-image: radial-gradient(1200px 600px at 80% -10%, #1c1a24 0%, transparent 60%);
+}
+.page{max-width:1180px;margin:0 auto;padding:48px 28px 120px}
+.lead h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(34px,5vw,60px);line-height:1.02;margin:0 0 14px;letter-spacing:-.01em}
+.lead p{max-width:640px;color:#a7a39a;font-size:16px;line-height:1.6;margin:0}
+.lead .kbd{font-family:'Space Mono',monospace;background:#1a1a1f;border:1px solid #2a2a31;border-radius:6px;padding:2px 7px;color:#ffcf66;font-size:13px}
+.rail{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+.rail a{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#cfc9bd;text-decoration:none;border:1px solid #2a2a31;border-radius:99px;padding:7px 13px;transition:.2s}
+.rail a:hover{background:#fff;color:#000;border-color:#fff}
+
+.design{margin-top:64px;scroll-margin-top:24px}
+.tagrow{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.num{font-family:'Fraunces',serif;font-size:42px;font-weight:600;color:#ffcf66;line-height:1}
+.dname{font-family:'Fraunces',serif;font-size:26px;font-weight:600;margin:0}
+.vibe{display:flex;gap:7px;flex-wrap:wrap}
+.vibe span{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8a867d;border:1px solid #26262c;border-radius:99px;padding:4px 10px}
+.pick{margin-left:auto;font-family:'Archivo',sans-serif;font-weight:800;font-size:13px;letter-spacing:.02em;background:#ffcf66;color:#17130a;border:0;border-radius:99px;padding:10px 18px;cursor:pointer;transition:.15s}
+.pick:hover{transform:translateY(-2px)}
+.frame{border:1px solid #222228;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
+
+/* ── shared mockup skeleton ───────────────────────────── */
+.mock{--display:'Archivo';--body:'Archivo';--accent:#ffcf66;
+  display:grid;grid-template-columns:312px 1fr;min-height:452px;font-family:var(--body)}
+.panel{padding:24px;display:flex;flex-direction:column;gap:15px}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-.01em}
+.brand .logo{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;font-size:15px}
+.fld{display:flex;flex-direction:column;gap:8px}
+.fld>span{font-size:11px;letter-spacing:.09em;text-transform:uppercase;opacity:.7;display:flex;justify-content:space-between}
+.input{padding:12px 13px;border-radius:11px;font-size:13px;line-height:1.45;font-family:var(--body)}
+.ta{min-height:62px}
+.btn{padding:12px 14px;border-radius:11px;font-weight:800;font-size:13px;cursor:pointer;text-align:center;border:0;font-family:var(--body);letter-spacing:.01em}
+.range{height:8px;border-radius:99px;position:relative;overflow:hidden}
+.range i{position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:99px}
+.range .knob{position:absolute;top:50%;left:62%;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%)}
+.bar{height:9px;border-radius:99px;overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:56%;border-radius:99px}
+.stat{font-size:11.5px;font-variant-numeric:tabular-nums;opacity:.8;font-family:var(--body)}
+.canvas{padding:24px;display:flex;flex-direction:column;gap:16px}
+.chead{display:flex;justify-content:space-between;align-items:center}
+.chead h4{margin:0;font-family:var(--display);font-size:17px}
+.cpill{font-size:11px;padding:4px 11px;border-radius:99px;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.tile{aspect-ratio:1;border-radius:14px;display:grid;place-items:center;position:relative;overflow:hidden;transition:transform .2s}
+.tile:hover{transform:translateY(-3px)}
+.tile .art{width:72%;height:72%;display:block}
+.tile .chk{position:absolute;top:9px;left:9px;width:18px;height:18px;border-radius:5px;border:2px solid currentColor;opacity:.5}
+.tile.sel .chk{opacity:1;background:var(--accent);border-color:var(--accent)}
+.tile.sel{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── 01 Obsidian Studio — refined dark, serif display, amber ───────── */
+.d01 .mock{--display:'Fraunces';--body:'Archivo';--accent:#e8a13c;background:#121013;color:#efeae2}
+.d01 .panel{background:#17141a;border-right:1px solid #241f29}
+.d01 .brand .logo{background:linear-gradient(135deg,#e8a13c,#a85f1d);color:#1a1208}
+.d01 .input{background:#0f0d12;border:1px solid #2a2530;color:#efeae2}
+.d01 .btn.ghost{background:transparent;border:1px solid #3a3340;color:#efeae2}
+.d01 .btn.primary{background:linear-gradient(135deg,#e8a13c,#c47a23);color:#1a1208}
+.d01 .range,.d01 .bar{background:#241f29}
+.d01 .range i,.d01 .bar i{background:linear-gradient(90deg,#e8a13c,#f0c168)}
+.d01 .range .knob{background:#efeae2;box-shadow:0 0 0 4px rgba(232,161,60,.18)}
+.d01 .canvas{background:#0f0d12}
+.d01 .cpill{background:#241f29;color:#e8a13c}
+.d01 .tile{background:radial-gradient(120% 120% at 30% 20%,#211b27,#16131a);color:#e8a13c;border:1px solid #241f29}
+
+/* ── 02 Blanc — swiss light minimal, hairlines, ink accent ─────────── */
+.d02 .mock{--display:'Archivo';--body:'Archivo';--accent:#1b1b1b;background:#f6f5f1;color:#1b1b1b}
+.d02 .panel{background:#fff;border-right:1px solid #e4e2da}
+.d02 .brand .logo{background:#1b1b1b;color:#fff;border-radius:3px}
+.d02 .fld>span{opacity:.55}
+.d02 .input{background:#f6f5f1;border:1px solid #dddbd2;color:#1b1b1b}
+.d02 .btn.ghost{background:#fff;border:1px solid #1b1b1b;color:#1b1b1b}
+.d02 .btn.primary{background:#1b1b1b;color:#fff;border-radius:6px}
+.d02 .btn,.d02 .input,.d02 .tile,.d02 .range,.d02 .bar{border-radius:6px}
+.d02 .range,.d02 .bar{background:#e6e4dc}
+.d02 .range i,.d02 .bar i{background:#1b1b1b}
+.d02 .range .knob{background:#1b1b1b;border-radius:2px}
+.d02 .canvas{background:#f6f5f1}
+.d02 .cpill{background:#1b1b1b;color:#fff}
+.d02 .tile{background:#fff;border:1px solid #e0ded5;color:#1b1b1b}
+.d02 .chead h4{letter-spacing:-.02em}
+
+/* ── 03 Aurora Glass — frosted glass on mesh, syne, cyan/magenta ───── */
+.d03 .mock{--display:'Syne';--body:'Archivo';--accent:#36e0d4;color:#eef2ff;position:relative;
+  background:#0a0b1a;background-image:
+    radial-gradient(50% 60% at 15% 10%,rgba(120,80,255,.55),transparent 60%),
+    radial-gradient(45% 55% at 90% 30%,rgba(54,224,212,.45),transparent 60%),
+    radial-gradient(55% 60% at 60% 110%,rgba(255,80,180,.4),transparent 60%)}
+.d03 .panel{background:rgba(20,22,44,.5);backdrop-filter:blur(18px);border-right:1px solid rgba(255,255,255,.12)}
+.d03 .brand .logo{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2)}
+.d03 .input{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);color:#eef2ff}
+.d03 .btn.ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#eef2ff}
+.d03 .btn.primary{background:linear-gradient(135deg,#36e0d4,#7a5cff);color:#06121a}
+.d03 .range,.d03 .bar{background:rgba(255,255,255,.12)}
+.d03 .range i,.d03 .bar i{background:linear-gradient(90deg,#36e0d4,#7a5cff)}
+.d03 .range .knob{background:#fff}
+.d03 .canvas{background:rgba(10,11,26,.35);backdrop-filter:blur(6px)}
+.d03 .cpill{background:rgba(255,255,255,.12);color:#36e0d4}
+.d03 .tile{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#9be9ff;backdrop-filter:blur(8px)}
+
+/* ── 04 Brutal — black on chrome yellow, mono, hard shadows ────────── */
+.d04 .mock{--display:'Space Mono';--body:'Space Mono';--accent:#1b1b1b;background:#f4e500;color:#111}
+.d04 .panel{background:#f4e500;border-right:3px solid #111}
+.d04 .brand{text-transform:uppercase}
+.d04 .brand .logo{background:#111;color:#f4e500;border-radius:0}
+.d04 .fld>span{opacity:1;font-weight:700}
+.d04 .input{background:#fff;border:2px solid #111;color:#111;border-radius:0}
+.d04 .btn{border-radius:0;border:2px solid #111;box-shadow:4px 4px 0 #111}
+.d04 .btn.ghost{background:#fff;color:#111}
+.d04 .btn.primary{background:#111;color:#f4e500}
+.d04 .range,.d04 .bar{background:#fff;border:2px solid #111;border-radius:0;height:14px}
+.d04 .range i,.d04 .bar i{background:#111;border-radius:0}
+.d04 .range .knob{display:none}
+.d04 .canvas{background:#fff;border-left:3px solid #111}
+.d04 .cpill{background:#111;color:#f4e500;border-radius:0}
+.d04 .tile{background:#f4e500;border:2px solid #111;border-radius:0;color:#111;box-shadow:4px 4px 0 #111}
+.d04 .tile .chk{border-radius:0}
+
+/* ── 05 Atelier — warm editorial cream paper, rust, fraunces ───────── */
+.d05 .mock{--display:'Fraunces';--body:'Spectral';--accent:#c14a28;background:#f4efe4;color:#2a2118}
+.d05 .panel{background:#efe8d8;border-right:1px solid #ddd2bb}
+.d05 .brand .logo{background:#c14a28;color:#fbf0e6;border-radius:50%}
+.d05 .input{background:#fbf7ee;border:1px solid #d8ccb3;color:#2a2118}
+.d05 .btn.ghost{background:transparent;border:1px solid #c14a28;color:#c14a28}
+.d05 .btn.primary{background:#c14a28;color:#fbf0e6}
+.d05 .range,.d05 .bar{background:#e0d6c0}
+.d05 .range i,.d05 .bar i{background:#c14a28}
+.d05 .range .knob{background:#2a2118}
+.d05 .canvas{background:#f4efe4}
+.d05 .cpill{background:#c14a28;color:#fbf0e6}
+.d05 .tile{background:#fbf7ee;border:1px solid #ddd2bb;color:#c14a28}
+.d05 .chead h4{font-style:italic}
+
+/* ── 06 Terminal — phosphor green CRT, scanlines, mono ─────────────── */
+.d06 .mock{--display:'JetBrains Mono';--body:'JetBrains Mono';--accent:#36ff9e;background:#04100a;color:#8effc4;position:relative}
+.d06 .mock::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(transparent 0 2px,rgba(0,0,0,.18) 2px 4px);mix-blend-mode:overlay}
+.d06 .panel{background:#06160e;border-right:1px solid #134d2f}
+.d06 .brand{text-transform:uppercase;letter-spacing:.06em}
+.d06 .brand .logo{background:transparent;border:1px solid #36ff9e;color:#36ff9e;border-radius:3px}
+.d06 .input{background:#03130b;border:1px solid #134d2f;color:#8effc4;border-radius:4px}
+.d06 .btn{border-radius:4px}
+.d06 .btn.ghost{background:transparent;border:1px solid #1d6b41;color:#8effc4}
+.d06 .btn.primary{background:#36ff9e;color:#04140b}
+.d06 .range,.d06 .bar{background:#0c2c1b;border-radius:3px}
+.d06 .range i,.d06 .bar i{background:#36ff9e;box-shadow:0 0 12px #36ff9e}
+.d06 .range .knob{background:#36ff9e;border-radius:2px}
+.d06 .canvas{background:#03130b}
+.d06 .cpill{background:#0c2c1b;color:#36ff9e;border-radius:3px;border:1px solid #1d6b41}
+.d06 .tile{background:#06160e;border:1px solid #134d2f;border-radius:4px;color:#36ff9e}
+.d06 .tile .chk{border-radius:2px}
+
+/* ── 07 Marshmallow — claymorphism pastel, unbounded, soft ─────────── */
+.d07 .mock{--display:'Unbounded';--body:'Archivo';--accent:#ff7eb6;background:#f3edff;color:#3a2c54}
+.d07 .panel{background:#ece3ff}
+.d07 .brand .logo{background:#ff7eb6;color:#fff;border-radius:11px;box-shadow:4px 4px 10px rgba(160,120,220,.4)}
+.d07 .input{background:#f7f2ff;border:0;color:#3a2c54;box-shadow:inset 3px 3px 8px #d8cbf2,inset -3px -3px 8px #fff;border-radius:14px}
+.d07 .btn{border-radius:16px}
+.d07 .btn.ghost{background:#f3edff;color:#7a5cc4;box-shadow:5px 5px 12px #d4c7f0,-5px -5px 12px #fff}
+.d07 .btn.primary{background:linear-gradient(135deg,#ff9ec9,#c08bff);color:#fff;box-shadow:6px 6px 16px rgba(180,130,230,.5)}
+.d07 .range,.d07 .bar{background:#ddd0f5;border-radius:99px}
+.d07 .range i,.d07 .bar i{background:linear-gradient(90deg,#ff9ec9,#c08bff)}
+.d07 .range .knob{background:#fff;box-shadow:2px 2px 6px rgba(150,110,210,.5)}
+.d07 .canvas{background:#f3edff}
+.d07 .cpill{background:#ffd9ec;color:#d4408a;border-radius:99px}
+.d07 .tile{background:#f7f2ff;border-radius:18px;color:#c08bff;box-shadow:6px 6px 14px #d8cbf2,-6px -6px 14px #fff}
+
+/* ── 08 Midnight Gold — luxury black + hairline gold, instrument serif ─ */
+.d08 .mock{--display:'Instrument Serif';--body:'Archivo';--accent:#cBA45a;background:#0a0a0b;color:#e9e4d6}
+.d08 .panel{background:#0d0d0f;border-right:1px solid #25221a}
+.d08 .brand{font-size:22px;letter-spacing:.01em}
+.d08 .brand .logo{background:transparent;border:1px solid #cBA45a;color:#cBA45a;border-radius:50%}
+.d08 .input{background:#070708;border:1px solid #2a261c;color:#e9e4d6}
+.d08 .btn.ghost{background:transparent;border:1px solid #4a4330;color:#e9e4d6}
+.d08 .btn.primary{background:linear-gradient(135deg,#e3c878,#b8923f);color:#1a1505}
+.d08 .range,.d08 .bar{background:#201d15}
+.d08 .range i,.d08 .bar i{background:linear-gradient(90deg,#cBA45a,#efd793)}
+.d08 .range .knob{background:#efd793}
+.d08 .canvas{background:#070708}
+.d08 .cpill{background:transparent;border:1px solid #4a4330;color:#cBA45a}
+.d08 .tile{background:linear-gradient(160deg,#141310,#0a0a0b);border:1px solid #25221a;color:#cBA45a}
+.d08 .chead h4{font-size:20px}
+
+/* ── 09 Blueprint — technical, grid bg, archivo narrow, safety orange ─ */
+.d09 .mock{--display:'Archivo Narrow';--body:'IBM Plex Mono';--accent:#ff5a1f;background:#0e1622;color:#cdd9e6;
+  background-image:linear-gradient(rgba(120,160,210,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(120,160,210,.08) 1px,transparent 1px);background-size:22px 22px}
+.d09 .panel{background:rgba(13,22,34,.86);border-right:1px solid #25394f}
+.d09 .brand{text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.d09 .brand .logo{background:#ff5a1f;color:#0e1622;border-radius:3px}
+.d09 .fld>span{font-family:'IBM Plex Mono',monospace}
+.d09 .input{background:#0b1320;border:1px solid #25394f;color:#cdd9e6;border-radius:4px}
+.d09 .btn{border-radius:4px}
+.d09 .btn.ghost{background:transparent;border:1px solid #34506e;color:#cdd9e6}
+.d09 .btn.primary{background:#ff5a1f;color:#0e1622}
+.d09 .range,.d09 .bar{background:#1b2a3d;border-radius:3px;border:1px solid #25394f}
+.d09 .range i,.d09 .bar i{background:repeating-linear-gradient(45deg,#ff5a1f 0 6px,#c4400f 6px 12px)}
+.d09 .range .knob{background:#cdd9e6;border-radius:2px}
+.d09 .canvas{background:rgba(11,19,32,.78)}
+.d09 .cpill{background:#1b2a3d;color:#ff5a1f;border-radius:3px;border:1px solid #34506e}
+.d09 .tile{background:#0b1320;border:1px solid #25394f;border-radius:4px;color:#ff5a1f}
+.d09 .tile .chk{border-radius:0}
+
+/* ── 10 Spectrum — vibrant gradient pop, bricolage, energetic ──────── */
+.d10 .mock{--display:'Bricolage Grotesque';--body:'Archivo';--accent:#fff;color:#fff;
+  background:linear-gradient(135deg,#ff2e6e 0%,#7b2ff7 50%,#2e8bff 100%)}
+.d10 .panel{background:rgba(15,8,30,.34);backdrop-filter:blur(8px);border-right:1px solid rgba(255,255,255,.18)}
+.d10 .brand{font-weight:800}
+.d10 .brand .logo{background:#fff;color:#7b2ff7;border-radius:9px}
+.d10 .input{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.28);color:#fff}
+.d10 .btn.ghost{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.32);color:#fff}
+.d10 .btn.primary{background:#fff;color:#7b2ff7}
+.d10 .range,.d10 .bar{background:rgba(0,0,0,.28)}
+.d10 .range i,.d10 .bar i{background:#fff}
+.d10 .range .knob{background:#fff}
+.d10 .canvas{background:rgba(10,5,22,.28);backdrop-filter:blur(4px)}
+.d10 .cpill{background:#fff;color:#7b2ff7}
+.d10 .tile{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff}
+
+/* picked banner */
+.picked{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(140%);
+  background:#ffcf66;color:#17130a;font-weight:800;padding:13px 22px;border-radius:99px;
+  box-shadow:0 16px 40px rgba(0,0,0,.5);transition:transform .35s cubic-bezier(.2,.9,.3,1.3);z-index:50;font-size:14px}
+.picked.show{transform:translateX(-50%) translateY(0)}
+
+@media(max-width:760px){ .mock{grid-template-columns:1fr} .panel{border-right:0!important;border-bottom:1px solid rgba(128,128,128,.2)} }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="lead">
+    <h1>Icon Studio — ten directions.</h1>
+    <p>Each card below is a real mockup of your app icon generator — the prompt,
+    the <span class="kbd">✨ Enhance</span> button, the concepts slider, the live
+    progress bar, and the concept grid with a music-fox glyph. Same app, ten
+    aesthetics. Scroll, hit <b>Pick this</b> on the one you love, then tell me the
+    number and I'll build the whole UI in that style.</p>
+    <nav class="rail" id="rail"></nav>
+  </header>
+  <div id="gallery"></div>
+</div>
+<div class="picked" id="picked"></div>
+
+<template id="mockTpl">
+  <div class="mock">
+    <aside class="panel">
+      <div class="brand"><span class="logo">◭</span> Icon Studio</div>
+      <label class="fld"><span>Prompt</span><div class="input ta">music fox app icon, fox in headphones, sound waves, rust + charcoal…</div></label>
+      <button class="btn ghost">✨ Enhance prompt with Kimi</button>
+      <label class="fld"><span>Concepts <b>25</b></span><div class="range"><i></i><span class="knob"></span></div></label>
+      <button class="btn primary">Generate concepts</button>
+      <div class="bar"><i></i></div>
+      <div class="stat">Designed 14/25 · 56% · 22.4s</div>
+    </aside>
+    <main class="canvas">
+      <div class="chead"><h4>Concepts</h4><span class="cpill">14 / 25</span></div>
+      <div class="grid">
+        <div class="tile sel"><span class="chk"></span><span class="art"></span></div>
+        <div class="tile"><span class="chk"></span><span class="art"></span></div>
+        <div class="tile sel"><span class="chk"></span><span class="art"></span></div>
+        <div class="tile"><span class="chk"></span><span class="art"></span></div>
+        <div class="tile"><span class="chk"></span><span class="art"></span></div>
+        <div class="tile"><span class="chk"></span><span class="art"></span></div>
+      </div>
+    </main>
+  </div>
+</template>
+
+<script>
+const FOX = `<svg viewBox="0 0 100 100" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M24 54a26 26 0 0 1 52 0" stroke="currentColor" stroke-width="6" stroke-linecap="round" opacity=".5"/>
+  <rect x="15" y="50" width="12" height="20" rx="5" fill="currentColor" opacity=".5"/>
+  <rect x="73" y="50" width="12" height="20" rx="5" fill="currentColor" opacity=".5"/>
+  <path d="M31 30 L41 55 L23 50 Z" fill="currentColor"/>
+  <path d="M69 30 L59 55 L77 50 Z" fill="currentColor"/>
+  <path d="M50 41 C66 41 73 55 69 70 C65 82 56 86 50 86 C44 86 35 82 31 70 C27 55 34 41 50 41 Z" fill="currentColor"/>
+  <path d="M50 67 L45 77 Q50 80 55 77 Z" fill="#000" opacity=".28"/>
+  <circle cx="42" cy="61" r="3" fill="#000" opacity=".5"/>
+  <circle cx="58" cy="61" r="3" fill="#000" opacity=".5"/>
+</svg>`;
+
+const DESIGNS = [
+  ["d01","Obsidian Studio","Dark · Refined · Serif display · Amber"],
+  ["d02","Blanc","Swiss · Light · Hairlines · Ink"],
+  ["d03","Aurora Glass","Glassmorphism · Mesh · Neon"],
+  ["d04","Brutal","Brutalist · Mono · Chrome yellow"],
+  ["d05","Atelier","Warm editorial · Cream paper · Rust"],
+  ["d06","Terminal","Phosphor CRT · Scanlines · Mono"],
+  ["d07","Marshmallow","Claymorphism · Pastel · Soft"],
+  ["d08","Midnight Gold","Luxury · Black + gold · Elegant"],
+  ["d09","Blueprint","Technical · Grid · Safety orange"],
+  ["d10","Spectrum","Vibrant · Gradient pop · Bold"],
+];
+
+const gallery = document.getElementById("gallery");
+const rail = document.getElementById("rail");
+const tpl = document.getElementById("mockTpl");
+const banner = document.getElementById("picked");
+
+DESIGNS.forEach(([cls,name,vibe],i)=>{
+  const n = String(i+1).padStart(2,"0");
+  const sec = document.createElement("section");
+  sec.className = "design "+cls;
+  sec.id = "design-"+n;
+  sec.innerHTML = `
+    <div class="tagrow">
+      <span class="num">${n}</span>
+      <h3 class="dname">${name}</h3>
+      <div class="vibe">${vibe.split(" · ").map(v=>`<span>${v}</span>`).join("")}</div>
+      <button class="pick" data-n="${n}" data-name="${name}">Pick this →</button>
+    </div>
+    <div class="frame"></div>`;
+  const frame = sec.querySelector(".frame");
+  frame.appendChild(tpl.content.cloneNode(true));
+  gallery.appendChild(sec);
+
+  const a = document.createElement("a");
+  a.href = "#design-"+n; a.textContent = n+" "+name;
+  rail.appendChild(a);
+});
+
+document.querySelectorAll(".art").forEach(a=>a.innerHTML = FOX);
+
+document.querySelectorAll(".pick").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    banner.textContent = `✓ Picked #${btn.dataset.n} — ${btn.dataset.name}. Tell Claude: "use design ${btn.dataset.n}".`;
+    banner.classList.add("show");
+    clearTimeout(window._pt);
+    window._pt = setTimeout(()=>banner.classList.remove("show"), 6000);
+  });
+});
+</script>
+</body>
+</html>
