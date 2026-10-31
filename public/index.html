@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Icon Forge - Kitsune</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="top">
+        <div class="brand"><span class="spark"></span> Icon Forge <span class="by">· Kitsune</span></div>
+      </header>
+
+      <!-- Step 1 - describe + generate -->
+      <section class="composer">
+        <label class="big-label" for="prompt">Describe the icon you want</label>
+        <textarea id="prompt" name="prompt" rows="3"
+          placeholder="a fox wearing headphones, rust orange on charcoal, bold and friendly, sound waves"></textarea>
+
+        <div class="composer-row">
+          <button id="enhanceButton" type="button" class="btn ghost">Improve my prompt</button>
+          <span class="grow"></span>
+          <button id="conceptsButton" type="button" class="btn primary">Generate <span id="genCount">4</span> concepts</button>
+          <button id="cancelButton" type="button" class="btn ghost" hidden>Cancel</button>
+        </div>
+
+        <p class="cost-hint">
+          <span id="costEstimate"><b>~$0.10</b> · 4 images</span> · saved to
+          <span id="saveHint">the company drive</span>
+        </p>
+
+        <details class="panel">
+          <summary>More options</summary>
+          <div class="opt-grid">
+            <label class="field">Avoid <span class="sub">things to keep out</span>
+              <input id="negativePrompt" name="negativePrompt" type="text"
+                placeholder="text, watermark, clutter, low contrast, blurry" />
+            </label>
+            <div class="field-row">
+              <label class="field">Style
+                <select id="style" name="style">
+                  <option value="clean vector app icon, bold silhouette, modern mobile app">Modern app</option>
+                  <option value="clean vector app icon, bold silhouette, modern mobile game">Mobile game</option>
+                  <option value="minimal premium app icon, simple geometric symbol">Minimal</option>
+                  <option value="cute playful app icon, rounded shapes, friendly colors">Cute</option>
+                  <option value="dark fantasy app icon, dramatic lighting, readable symbol">Dark fantasy</option>
+                </select>
+              </label>
+              <label class="field">Background
+                <input id="background" name="background" type="color" value="#121212" />
+              </label>
+            </div>
+            <label class="field">
+              <span class="range-top">How many concepts <output id="countValue">4</output></span>
+              <input id="count" name="count" type="range" min="1" max="25" value="4" />
+            </label>
+          </div>
+        </details>
+
+        <div id="progress" class="progress" aria-hidden="true">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <p id="status" class="status"></p>
+      </section>
+
+      <!-- Step 2 - pick, then step 3 - export -->
+      <section class="results">
+        <div class="results-head">
+          <h2 id="conceptsTitle">Concepts</h2>
+          <div class="results-actions">
+            <button id="selectAll" type="button" class="btn ghost tiny" hidden>Select all</button>
+            <button id="selectNone" type="button" class="btn ghost tiny" hidden>Clear</button>
+          </div>
+        </div>
+        <p id="conceptsHint" class="muted">
+          Your icons appear here as they’re drawn. Tap the ones you like, then download.
+          Leave none selected to use them all.
+        </p>
+        <div id="conceptGrid" class="grid"></div>
+
+        <details class="panel" id="exportPanel" hidden>
+          <summary>Export settings</summary>
+          <div class="opt-grid">
+            <div class="field-row" style="grid-template-columns: 1fr 1fr;">
+              <label class="field">Name
+                <input id="name" name="name" type="text" value="app-icon" autocomplete="off" />
+              </label>
+              <label class="field">Platforms
+                <select id="preset" name="preset">
+                  <option value="all">All (Android · iOS · Web)</option>
+                  <option value="android">Android</option>
+                  <option value="ios">iOS</option>
+                  <option value="web">Web</option>
+                </select>
+              </label>
+            </div>
+            <label class="field">
+              <span class="range-top">Padding <output id="paddingValue">8%</output></span>
+              <input id="padding" name="padding" type="range" min="0" max="30" value="8" />
+            </label>
+            <label class="check">
+              <input id="rounded" name="rounded" type="checkbox" value="true" />
+              Bake rounded corners into the PNGs
+            </label>
+          </div>
+        </details>
+
+        <button id="finalizeButton" type="button" class="btn primary" hidden>Download icons</button>
+
+        <h2 id="finalsTitle" hidden>Your icon packs</h2>
+        <div id="finalGrid" class="grid"></div>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

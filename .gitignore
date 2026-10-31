@@ -1,0 +1,10 @@
+node_modules/
+output/
+test-output/
+data/
+.playwright-mcp/
+costtest/
+*.log
+*.tmp
+rf*.json
+or_models.json
