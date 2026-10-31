@@ -2,8 +2,8 @@
 const sharp = require("sharp");
 const fs = require("fs");
 
-const src = process.argv[2] || "C:/Users/Owner/Downloads/fox1.png";
-const base = "C:/Users/Owner/kitsune-music/android/app/src/main/res";
+const src = process.argv[2] || "~/Downloads/source.png";
+const base = process.argv[3] || "~/project/android/app/src/main/res";
 const sizes = {
   "mipmap-mdpi": 48,
   "mipmap-hdpi": 72,
