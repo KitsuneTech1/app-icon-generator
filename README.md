@@ -80,7 +80,12 @@ Turn a text prompt into a set of app icon concepts, then export ready-to-drop An
    npm install
    ```
 
-6. **Start the server.**
+6. **Run the tests.** The test suite is local-only and does not call an AI provider.
+   ```bash
+   npm test
+   ```
+
+7. **Start the server.**
    ```bash
    npm start
    ```
@@ -89,7 +94,7 @@ Turn a text prompt into a set of app icon concepts, then export ready-to-drop An
    App Icon Generator running at http://127.0.0.1:8792
    ```
 
-7. **Open the app.** Go to `http://127.0.0.1:8792` in your browser. Override the port with `PORT=8793 npm start` (Mac/Linux) or `$env:PORT=8793; npm start` (Windows) if you need a different one.
+8. **Open the app.** Go to `http://127.0.0.1:8792` in your browser. Override the port with `PORT=8793 npm start` (Mac/Linux) or `$env:PORT=8793; npm start` (Windows) if you need a different one.
 
 **It worked if:** the page loads with a prompt box and a Generate button, and typing a prompt and clicking Generate produces icon images within a minute or so.
 
@@ -118,13 +123,13 @@ Turn a text prompt into a set of app icon concepts, then export ready-to-drop An
 
 ### set-icon.cjs
 
-A one-off helper script used to resize a single source image into a fixed set of Android launcher icon sizes for one specific project. It has hardcoded input and output paths, so treat it as a reference for writing your own resize script rather than a general-purpose CLI:
+A one-off helper script that resizes a source image into a fixed set of Android launcher icon sizes. It accepts the source image path and an optional output directory:
 
 ```bash
-node set-icon.cjs path/to/source.png
+node set-icon.cjs path/to/source.png path/to/android/app/src/main/res
 ```
 
-Edit the `base` path in the script before running it against a different project.
+Both paths are regular filesystem paths. Node does not expand `~` in command-line arguments, so use an absolute path or a path relative to the project directory when needed.
 
 ### design-gallery.html
 
