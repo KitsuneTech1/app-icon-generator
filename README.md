@@ -1,13 +1,13 @@
 <p align="center"><a href="https://kitsunetechnologies.org/work"><img src="https://raw.githubusercontent.com/KitsuneTech1/.github/main/assets/kitsune-banner.svg" alt="Built by Kitsune Technologies" width="760"></a></p>
 
-# Icon Forge
+# Icon Pack Forge
 
 Turn a text prompt into a set of app icon concepts, then export ready-to-drop Android, iOS, and web icon packs.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js&logoColor=white)
 
-![Icon Forge screenshot](docs/screenshot.png)
+![Icon Pack Forge screenshot](docs/screenshot.png)
 
 ## Features
 
