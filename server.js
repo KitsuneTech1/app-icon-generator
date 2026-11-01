@@ -19,11 +19,14 @@ const PORT = Number(process.env.PORT || 8792);
 const kimiConfigPath = path.join(os.homedir(), ".kimi", "config.toml");
 
 // How many concepts to ask the image model for at once. Each is one API call.
-const CONCURRENCY = Number(process.env.ICON_CONCURRENCY || 5);
+const CONCURRENCY = positiveInteger(process.env.ICON_CONCURRENCY, 5);
 const MAX_CONCEPTS = 25;
 // Default batch size when the caller doesn't specify one. Kept low because each
 // concept is a paid image-gen call (~$0.026); the UI slider still goes to 25.
-const DEFAULT_CONCEPTS = Number(process.env.ICON_DEFAULT_CONCEPTS || 4);
+const DEFAULT_CONCEPTS = Math.min(
+  MAX_CONCEPTS,
+  positiveInteger(process.env.ICON_DEFAULT_CONCEPTS, 4),
+);
 
 // Models / providers. Prompt enhancement uses a fast text model; icon concepts
 // use an image-generation model. Both go through providers in ~/.kimi/config.toml.
@@ -209,10 +212,8 @@ app.post("/finalize/start", (req, res, next) => {
       return;
     }
     const available = fs.readdirSync(conceptsDir).filter((f) => f.endsWith(".png")).sort();
-    let ids = Array.isArray(req.body.conceptIds)
-      ? req.body.conceptIds.map(Number).filter((n) => Number.isFinite(n))
-      : [];
-    if (ids.length === 0) ids = available.map((_f, i) => i + 1);
+    let ids = normalizeConceptIds(req.body.conceptIds);
+    if (ids.length === 0) ids = conceptIdsFromFiles(available);
 
     const jobId = `final-${newRunId()}`;
     const job = makeJob(jobId, "finalize", ids.length, {
@@ -239,7 +240,7 @@ async function runFinalizeJob(job, runId, ids, body) {
   const padding = clampNumber(body.padding, 0, 30, 8);
   const background = sanitizeColor(body.background || "#111827");
   const rounded = body.rounded === true || body.rounded === "true";
-  const preset = body.preset || "all";
+  const preset = normalizePreset(body.preset);
 
   for (const id of ids) {
     if (job.cancelled) break;
@@ -366,7 +367,7 @@ app.post("/generate", upload.single("source"), async (req, res, next) => {
     const padding = clampNumber(req.body.padding, 0, 30, 8);
     const background = sanitizeColor(req.body.background || "#111827");
     const rounded = req.body.rounded === "true";
-    const preset = req.body.preset || "all";
+    const preset = normalizePreset(req.body.preset);
     const baseName = safeName(req.body.name || "app-icon");
 
     res.setHeader("Content-Type", "application/zip");
@@ -388,11 +389,13 @@ app.use((err, req, res, _next) => {
   }
 });
 
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(`App Icon Generator running at http://127.0.0.1:${PORT}`);
-  console.log(`Concepts: ${ICON_MODEL} (${ICON_PROVIDER}) · Enhance: ${ENHANCE_MODEL} (${ENHANCE_PROVIDER})`);
-  console.log(`Saving runs to: ${OUTPUT_DIR}`);
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  app.listen(PORT, "127.0.0.1", () => {
+    console.log(`App Icon Generator running at http://127.0.0.1:${PORT}`);
+    console.log(`Concepts: ${ICON_MODEL} (${ICON_PROVIDER}) · Enhance: ${ENHANCE_MODEL} (${ENHANCE_PROVIDER})`);
+    console.log(`Saving runs to: ${OUTPUT_DIR}`);
+  });
+}
 
 // ── Core pipeline ────────────────────────────────────────────────────────────
 
@@ -402,7 +405,7 @@ function readConceptOptions(body) {
     negative: String(body.negativePrompt || "").trim(),
     style: String(body.style || "clean vector app icon").trim(),
     background: sanitizeColor(body.background || "#111827"),
-    count: clampNumber(body.count, 1, MAX_CONCEPTS, DEFAULT_CONCEPTS),
+    count: Math.floor(clampNumber(body.count, 1, MAX_CONCEPTS, DEFAULT_CONCEPTS)),
   };
 }
 
@@ -464,18 +467,16 @@ async function runFinalize(body) {
   const padding = clampNumber(body.padding, 0, 30, 8);
   const background = sanitizeColor(body.background || "#111827");
   const rounded = body.rounded === true || body.rounded === "true";
-  const preset = body.preset || "all";
+  const preset = normalizePreset(body.preset);
 
   const available = fs
     .readdirSync(conceptsDir)
     .filter((f) => f.endsWith(".png"))
     .sort();
 
-  let ids = Array.isArray(body.conceptIds)
-    ? body.conceptIds.map(Number).filter((n) => Number.isFinite(n))
-    : [];
+  let ids = normalizeConceptIds(body.conceptIds);
   // No selection => finalize every concept.
-  if (ids.length === 0) ids = available.map((_f, i) => i + 1);
+  if (ids.length === 0) ids = conceptIdsFromFiles(available);
 
   const finalsDir = path.join(runDir, "finals");
   fs.mkdirSync(finalsDir, { recursive: true });
@@ -512,9 +513,11 @@ async function mapWithConcurrency(items, limit, fn) {
       }
     }
   }
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, worker),
+  const workerCount = Math.min(
+    Math.max(1, Math.floor(Number(limit)) || 1),
+    items.length,
   );
+  await Promise.all(Array.from({ length: workerCount }, worker));
   return results;
 }
 
@@ -784,7 +787,29 @@ function newRunId() {
 
 function safeRunId(value) {
   const v = String(value || "").trim();
-  return /^[A-Za-z0-9._-]+$/.test(v) ? v : "";
+  return v && v !== "." && v !== ".." && /^[A-Za-z0-9._-]+$/.test(v) ? v : "";
+}
+
+function normalizeConceptIds(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+}
+
+function conceptIdsFromFiles(files) {
+  return files
+    .map((file) => /^concept-(\d+)\.png$/.exec(file)?.[1])
+    .filter(Boolean)
+    .map(Number)
+    .sort((a, b) => a - b);
+}
+
+function normalizePreset(value) {
+  return ["all", "android", "ios", "web"].includes(value) ? value : "all";
+}
+
+function positiveInteger(value, fallback) {
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : fallback;
 }
 
 function clampNumber(value, min, max, fallback) {
@@ -803,3 +828,15 @@ function safeName(value) {
     "app-icon"
   );
 }
+
+export {
+  app,
+  appendIconPack,
+  conceptIdsFromFiles,
+  makeIcon,
+  makeIosContents,
+  mapWithConcurrency,
+  readConceptOptions,
+  runFinalize,
+  safeRunId,
+};
