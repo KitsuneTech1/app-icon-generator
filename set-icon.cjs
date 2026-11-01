@@ -14,7 +14,7 @@ const sizes = {
 
 (async () => {
   const meta = await sharp(src).metadata();
-  console.log(`source ${src} — ${meta.width}x${meta.height} ${meta.format}`);
+  console.log(`source ${src} - ${meta.width}x${meta.height} ${meta.format}`);
   for (const [dir, size] of Object.entries(sizes)) {
     const out = `${base}/${dir}/ic_launcher.png`;
     if (!fs.existsSync(`${base}/${dir}`)) fs.mkdirSync(`${base}/${dir}`, { recursive: true });
