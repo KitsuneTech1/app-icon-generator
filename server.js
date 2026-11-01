@@ -2,6 +2,9 @@ import express from "express";
 import multer from "multer";
 import sharp from "sharp";
 import archiver from "archiver";
+import { lookup as dnsLookup } from "node:dns/promises";
+import crypto from "node:crypto";
+import net from "node:net";
 import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
@@ -38,6 +41,14 @@ const ICON_MODEL = process.env.ICON_GEN_MODEL || "sourceful/riverflow-v2.5-fast"
 // Where every run (concepts + final icon packs) is saved. Defaults to ./output
 // and can be moved with ICON_OUTPUT_DIR.
 const OUTPUT_DIR = resolveOutputDir();
+const MAX_PROMPT_LENGTH = 4000;
+const MAX_NEGATIVE_LENGTH = 2000;
+const MAX_STYLE_LENGTH = 500;
+const MAX_NAME_LENGTH = 80;
+const MAX_RUN_ID_LENGTH = 80;
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+const MAX_INPUT_PIXELS = 16_777_216;
+const MAX_REMOTE_REDIRECTS = 3;
 
 const androidIcons = [
   ["android/mipmap-mdpi/ic_launcher.png", 48],
@@ -77,7 +88,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/runs", express.static(OUTPUT_DIR));
 
 app.get("/config", (_req, res) => {
-  res.json({ outputDir: OUTPUT_DIR, maxConcepts: MAX_CONCEPTS });
+  res.json(getPublicConfig());
 });
 
 // ── Live jobs (polled every ~250ms by the UI) ────────────────────────────────
@@ -122,7 +133,6 @@ app.get("/progress/:id", (req, res) => {
     elapsedMs: Date.now() - job.started,
     statusLine: job.statusLine,
     runId: job.runId,
-    savedTo: job.savedTo,
     items: [...job.items].sort((a, b) => a.id - b.id),
   });
 });
@@ -159,10 +169,10 @@ app.post("/concepts/start", (req, res, next) => {
       savedTo: path.join(OUTPUT_DIR, runId),
     });
     runConceptsJob(job, opts, conceptsDir).catch((err) => {
-      job.error = err.message;
+      job.error = publicErrorMessage(err);
       job.done = true;
     });
-    res.json({ jobId: runId, runId, total: opts.count, savedTo: job.savedTo });
+    res.json({ jobId: runId, runId, total: opts.count });
   } catch (err) {
     next(err);
   }
@@ -182,7 +192,7 @@ async function runConceptsJob(job, opts, conceptsDir) {
     } catch (err) {
       if (job.cancelled) return;
       job.failed++;
-      job.items.push({ id: idx + 1, error: err.message });
+      job.items.push({ id: idx + 1, error: publicErrorMessage(err) });
     } finally {
       active--;
       if (!job.cancelled) {
@@ -205,23 +215,30 @@ async function runConceptsJob(job, opts, conceptsDir) {
 // Start finalizing selected concepts into icon packs; polled like concepts.
 app.post("/finalize/start", (req, res, next) => {
   try {
-    const runId = safeRunId(req.body.runId);
+    const body = objectBody(req.body);
+    const runId = safeRunId(body.runId);
     const conceptsDir = path.join(OUTPUT_DIR, runId, "concepts");
     if (!runId || !fs.existsSync(conceptsDir)) {
       res.status(400).json({ error: "Unknown runId - generate concepts first." });
       return;
     }
+    if (body.conceptIds !== undefined && !Array.isArray(body.conceptIds)) {
+      res.status(400).json({ error: "conceptIds must be an array." });
+      return;
+    }
     const available = fs.readdirSync(conceptsDir).filter((f) => f.endsWith(".png")).sort();
-    let ids = normalizeConceptIds(req.body.conceptIds);
-    if (ids.length === 0) ids = conceptIdsFromFiles(available);
+    let ids = normalizeConceptIds(body.conceptIds);
+    if (!Array.isArray(body.conceptIds) || body.conceptIds.length === 0) {
+      ids = conceptIdsFromFiles(available);
+    }
 
     const jobId = `final-${newRunId()}`;
     const job = makeJob(jobId, "finalize", ids.length, {
       runId,
       savedTo: path.join(OUTPUT_DIR, runId, "finals"),
     });
-    runFinalizeJob(job, runId, ids, req.body).catch((err) => {
-      job.error = err.message;
+    runFinalizeJob(job, runId, ids, body).catch((err) => {
+      job.error = publicErrorMessage(err);
       job.done = true;
     });
     res.json({ jobId, total: ids.length });
@@ -258,7 +275,7 @@ async function runFinalizeJob(job, runId, ids, body) {
       job.items.push({ id, zip: `/runs/${runId}/finals/${zipName}` });
     } catch (err) {
       job.failed++;
-      job.items.push({ id, error: err.message });
+      job.items.push({ id, error: publicErrorMessage(err) });
     } finally {
       job.completed++;
     }
@@ -273,7 +290,7 @@ async function runFinalizeJob(job, runId, ids, body) {
 // ── Prompt enhancement ───────────────────────────────────────────────────────
 app.post("/enhance", async (req, res, next) => {
   try {
-    const prompt = String(req.body.prompt || "").trim();
+    const prompt = readText(objectBody(req.body).prompt, MAX_PROMPT_LENGTH, "Prompt");
     if (!prompt) {
       res.status(400).json({ error: "Type an icon prompt first." });
       return;
@@ -294,7 +311,7 @@ app.post("/concepts", async (req, res, next) => {
       return;
     }
     const result = await runConcepts(opts);
-    res.json(result);
+    res.json(publicConceptResult(result));
   } catch (err) {
     next(err);
   }
@@ -304,7 +321,7 @@ app.post("/concepts", async (req, res, next) => {
 app.post("/finalize", async (req, res, next) => {
   try {
     const result = await runFinalize(req.body);
-    res.json(result);
+    res.json(publicFinalizeResult(result));
   } catch (err) {
     next(err);
   }
@@ -313,44 +330,46 @@ app.post("/finalize", async (req, res, next) => {
 // ── One-shot agent API: prompt -> concepts -> finals, all saved to the drive ──
 app.post("/api/generate", async (req, res, next) => {
   try {
-    let prompt = String(req.body.prompt || "").trim();
+    const body = objectBody(req.body);
+    let prompt = readText(body.prompt, MAX_PROMPT_LENGTH, "Prompt");
     if (!prompt) {
       res.status(400).json({ error: "prompt is required" });
       return;
     }
-    if (req.body.enhance === true || req.body.enhance === "true") {
+    if (body.enhance === true || body.enhance === "true") {
       prompt = await enhancePrompt(prompt);
     }
 
-    const conceptResult = await runConcepts(readConceptOptions({ ...req.body, prompt }));
+    const conceptResult = await runConcepts(readConceptOptions({ ...body, prompt }));
 
     // select: "all" (default), an array of concept ids, or a number = take top N.
     let conceptIds = [];
-    const select = req.body.select;
+    const select = body.select;
     if (Array.isArray(select)) conceptIds = select.map(Number).filter(Boolean);
     else if (typeof select === "number" || /^\d+$/.test(String(select || ""))) {
+      const topN = Math.max(0, Math.floor(Number(select)));
       conceptIds = conceptResult.concepts
         .filter((c) => !c.error)
-        .slice(0, Number(select))
+        .slice(0, topN)
         .map((c) => c.id);
+      if (topN === 0) conceptIds = [0];
     } // else "all" -> empty -> runFinalize uses every concept
 
     const finalResult = await runFinalize({
       runId: conceptResult.runId,
       conceptIds,
-      name: req.body.name,
-      padding: req.body.padding,
+      name: body.name,
+      padding: body.padding,
       background: conceptResult.background,
-      rounded: req.body.rounded,
-      preset: req.body.preset,
+      rounded: body.rounded,
+      preset: body.preset,
     });
 
     res.json({
       runId: conceptResult.runId,
       prompt,
-      savedTo: conceptResult.savedTo,
       concepts: conceptResult.concepts,
-      finals: finalResult.finals,
+      finals: finalResult.finals.map(({ savedTo, ...item }) => item),
     });
   } catch (err) {
     next(err);
@@ -383,9 +402,10 @@ app.post("/generate", upload.single("source"), async (req, res, next) => {
 });
 
 app.use((err, req, res, _next) => {
-  console.error(err);
+  console.error("[icon-generator] request failed", err?.name || "Error");
   if (!res.headersSent) {
-    res.status(500).json({ error: err.message || "Icon generation failed." });
+    const status = Number.isInteger(err?.statusCode) ? err.statusCode : 500;
+    res.status(status).json({ error: publicErrorMessage(err) });
   }
 });
 
@@ -393,17 +413,18 @@ if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   app.listen(PORT, "127.0.0.1", () => {
     console.log(`App Icon Generator running at http://127.0.0.1:${PORT}`);
     console.log(`Concepts: ${ICON_MODEL} (${ICON_PROVIDER}) · Enhance: ${ENHANCE_MODEL} (${ENHANCE_PROVIDER})`);
-    console.log(`Saving runs to: ${OUTPUT_DIR}`);
+    console.log("Saving runs to the configured output directory.");
   });
 }
 
 // ── Core pipeline ────────────────────────────────────────────────────────────
 
 function readConceptOptions(body) {
+  body = objectBody(body);
   return {
-    prompt: String(body.prompt || "").trim(),
-    negative: String(body.negativePrompt || "").trim(),
-    style: String(body.style || "clean vector app icon").trim(),
+    prompt: readText(body.prompt, MAX_PROMPT_LENGTH, "Prompt"),
+    negative: readText(body.negativePrompt, MAX_NEGATIVE_LENGTH, "Negative prompt"),
+    style: readText(body.style || "clean vector app icon", MAX_STYLE_LENGTH, "Style"),
     background: sanitizeColor(body.background || "#111827"),
     count: Math.floor(clampNumber(body.count, 1, MAX_CONCEPTS, DEFAULT_CONCEPTS)),
   };
@@ -456,11 +477,19 @@ async function runConcepts(opts) {
 }
 
 async function runFinalize(body) {
+  body = objectBody(body);
   const runId = safeRunId(body.runId);
   const runDir = path.join(OUTPUT_DIR, runId);
   const conceptsDir = path.join(runDir, "concepts");
   if (!runId || !fs.existsSync(conceptsDir)) {
-    throw new Error("Unknown runId - generate concepts first.");
+    const error = new Error("Unknown runId - generate concepts first.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (body.conceptIds !== undefined && !Array.isArray(body.conceptIds)) {
+    const error = new Error("conceptIds must be an array.");
+    error.statusCode = 400;
+    throw error;
   }
 
   const name = safeName(body.name || "app-icon");
@@ -476,7 +505,9 @@ async function runFinalize(body) {
 
   let ids = normalizeConceptIds(body.conceptIds);
   // No selection => finalize every concept.
-  if (ids.length === 0) ids = conceptIdsFromFiles(available);
+  if (!Array.isArray(body.conceptIds) || body.conceptIds.length === 0) {
+    ids = conceptIdsFromFiles(available);
+  }
 
   const finalsDir = path.join(runDir, "finals");
   fs.mkdirSync(finalsDir, { recursive: true });
@@ -509,7 +540,7 @@ async function mapWithConcurrency(items, limit, fn) {
       try {
         results[idx] = { ok: true, value: await fn(items[idx], idx) };
       } catch (err) {
-        results[idx] = { ok: false, error: err.message };
+        results[idx] = { ok: false, error: publicErrorMessage(err) };
       }
     }
   }
@@ -545,19 +576,36 @@ function writeIconZip(sourceBuffer, opts, destPath) {
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(destPath);
     const archive = archiver("zip", { zlib: { level: 9 } });
-    output.on("close", resolve);
-    output.on("error", reject);
-    archive.on("error", reject);
+    let settled = false;
+    const fail = async (err) => {
+      if (settled) return;
+      settled = true;
+      output.destroy();
+      try {
+        await fs.promises.rm(destPath, { force: true });
+      } catch {
+        // Keep the original packaging error.
+      }
+      reject(err);
+    };
+    output.on("close", () => {
+      if (!settled) {
+        settled = true;
+        resolve();
+      }
+    });
+    output.on("error", (err) => void fail(err));
+    archive.on("error", (err) => void fail(err));
     archive.pipe(output);
     appendIconPack(archive, sourceBuffer, opts)
       .then(() => archive.finalize())
-      .catch(reject);
+      .catch((err) => void fail(err));
   });
 }
 
 async function makeIcon(input, size, paddingPercent, background, rounded) {
   const innerSize = Math.max(1, Math.round(size * (1 - paddingPercent / 100)));
-  const image = await sharp(input)
+  const image = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
     .rotate()
     .resize(innerSize, innerSize, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()
@@ -616,8 +664,9 @@ function makeReadme(name, padding, background, rounded) {
 
 // ── Models (OpenRouter image gen + Azure Foundry text) ───────────────────────
 
-const MODEL_TIMEOUT_MS = Number(
-  process.env.ICON_MODEL_TIMEOUT_MS || process.env.ICON_KIMI_TIMEOUT_MS || 120000,
+const MODEL_TIMEOUT_MS = positiveInteger(
+  process.env.ICON_MODEL_TIMEOUT_MS || process.env.ICON_KIMI_TIMEOUT_MS,
+  120000,
 );
 
 // One OpenAI-compatible chat call. Returns the response message object
@@ -668,8 +717,8 @@ async function callModel(provider, model, messages, { maxTokens, temperature, mo
   }
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`${model} request failed: ${response.status} ${text.slice(0, 300)}`);
+    await response.body?.cancel();
+    throw new Error(`${model} request failed: ${response.status}`);
   }
   const data = await response.json();
   return data?.choices?.[0]?.message || {};
@@ -712,24 +761,130 @@ async function buildConceptImage(prompt, negative, style, background, variationI
     [{ role: "user", content: composed }],
     { modalities: ["image"], signal },
   );
-  const raw = await imageBufferFromMessage(message);
-  return sharp(raw).png().toBuffer();
+  const raw = await imageBufferFromMessage(message, signal);
+  return sharp(raw, { limitInputPixels: MAX_INPUT_PIXELS }).png().toBuffer();
 }
 
 // Pull the first image out of a chat message (data URI or hosted URL) -> Buffer.
-async function imageBufferFromMessage(message) {
+async function imageBufferFromMessage(message, signal) {
   const img = message?.images?.[0];
   const url = img?.image_url?.url || img?.url;
-  if (!url) throw new Error(`${ICON_MODEL} returned no image.`);
+  if (typeof url !== "string" || !url) throw new Error(`${ICON_MODEL} returned no image.`);
   if (url.startsWith("data:")) {
-    return Buffer.from(url.slice(url.indexOf(",") + 1), "base64");
+    const match = /^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(url);
+    if (!match) throw new Error("Model returned an invalid image data URI.");
+    if (match[2].length > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 4) {
+      throw new Error("Model returned an image that is too large.");
+    }
+    const buffer = Buffer.from(match[2], "base64");
+    if (!buffer.length || buffer.length > MAX_IMAGE_BYTES) {
+      throw new Error("Model returned an image that is too large.");
+    }
+    return buffer;
   }
-  if (/^https?:\/\//.test(url)) {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`Image download failed: ${r.status}`);
-    return Buffer.from(await r.arrayBuffer());
+  if (/^https?:\/\//i.test(url)) {
+    return fetchRemoteImage(url, signal);
   }
   throw new Error("Unrecognized image URL format from model.");
+}
+
+async function fetchRemoteImage(url, signal) {
+  let current = url;
+  const controller = signal ? null : new AbortController();
+  const requestSignal = signal || controller.signal;
+  const timer = controller ? setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS) : null;
+
+  try {
+    for (let redirect = 0; redirect <= MAX_REMOTE_REDIRECTS; redirect++) {
+      const target = await assertPublicRemoteImageUrl(current);
+      const response = await fetch(target.href, {
+        redirect: "manual",
+        signal: requestSignal,
+      });
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get("location");
+        await response.body?.cancel();
+        if (!location || redirect === MAX_REMOTE_REDIRECTS) {
+          throw new Error("Image download used too many redirects.");
+        }
+        current = new URL(location, target).href;
+        continue;
+      }
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new Error(`Image download failed: ${response.status}`);
+      }
+      const contentType = response.headers.get("content-type");
+      if (contentType && !/^image\//i.test(contentType)) {
+        await response.body?.cancel();
+        throw new Error("Image download returned a non-image response.");
+      }
+      return await readLimitedResponse(response, MAX_IMAGE_BYTES);
+    }
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error(signal?.aborted ? "Cancelled" : "Image download timed out.");
+    }
+    throw err;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+  throw new Error("Image download failed.");
+}
+
+async function readLimitedResponse(response, maxBytes) {
+  if (!response.body) {
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > maxBytes) throw new Error("Downloaded image is too large.");
+    return buffer;
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new Error("Downloaded image is too large.");
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks, total);
+}
+
+function validateRemoteImageUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Unrecognized image URL format from model.");
+  }
+  if (!/^https?:$/.test(url.protocol) || url.username || url.password || isPrivateAddress(url.hostname)) {
+    throw new Error("Image URL must point to a public HTTP(S) host.");
+  }
+  return url;
+}
+
+async function assertPublicRemoteImageUrl(value) {
+  const url = validateRemoteImageUrl(value);
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  if (net.isIP(hostname)) return url;
+  let addresses;
+  try {
+    addresses = await dnsLookup(hostname, { all: true, verbatim: true });
+  } catch {
+    throw new Error("Image URL host could not be resolved.");
+  }
+  if (!addresses.length || addresses.some(({ address }) => isPrivateAddress(address))) {
+    throw new Error("Image URL must resolve to a public host.");
+  }
+  return url;
 }
 
 function readProvider(name) {
@@ -781,18 +936,18 @@ function resolveOutputDir() {
 
 function newRunId() {
   const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const rand = Math.random().toString(36).slice(2, 6);
+  const rand = crypto.randomBytes(16).toString("hex");
   return `${ts}-${rand}`;
 }
 
 function safeRunId(value) {
   const v = String(value || "").trim();
-  return v && v !== "." && v !== ".." && /^[A-Za-z0-9._-]+$/.test(v) ? v : "";
+  return v.length <= MAX_RUN_ID_LENGTH && v && v !== "." && v !== ".." && /^[A-Za-z0-9._-]+$/.test(v) ? v : "";
 }
 
 function normalizeConceptIds(value) {
   if (!Array.isArray(value)) return [];
-  return [...new Set(value.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  return [...new Set(value.map(Number).filter((n) => Number.isSafeInteger(n) && n > 0 && n <= MAX_CONCEPTS))];
 }
 
 function conceptIdsFromFiles(files) {
@@ -800,6 +955,7 @@ function conceptIdsFromFiles(files) {
     .map((file) => /^concept-(\d+)\.png$/.exec(file)?.[1])
     .filter(Boolean)
     .map(Number)
+    .filter((n) => Number.isSafeInteger(n) && n > 0 && n <= MAX_CONCEPTS)
     .sort((a, b) => a - b);
 }
 
@@ -823,10 +979,60 @@ function sanitizeColor(value) {
 }
 
 function safeName(value) {
-  return (
-    String(value).trim().replace(/[^a-z0-9._-]+/gi, "-").replace(/^-+|-+$/g, "") ||
-    "app-icon"
-  );
+  const cleaned = String(value).trim().replace(/[^a-z0-9._-]+/gi, "-").replace(/^-+|-+$/g, "");
+  return cleaned.slice(0, MAX_NAME_LENGTH).replace(/^-+|-+$/g, "") || "app-icon";
+}
+
+function objectBody(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function readText(value, maxLength, label) {
+  const text = String(value ?? "").trim();
+  if (text.length > maxLength) {
+    const error = new Error(`${label} is too long (maximum ${maxLength} characters).`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return text;
+}
+
+function publicErrorMessage(error) {
+  return error?.statusCode === 400 ? error.message : "Icon generation failed.";
+}
+
+function getPublicConfig() {
+  return { maxConcepts: MAX_CONCEPTS };
+}
+
+function publicConceptResult(result) {
+  const { savedTo, ...publicResult } = result;
+  return publicResult;
+}
+
+function publicFinalizeResult(result) {
+  const { savedTo, finals, ...publicResult } = result;
+  return {
+    ...publicResult,
+    finals: finals.map(({ savedTo: _savedTo, ...item }) => item),
+  };
+}
+
+function isPrivateAddress(value) {
+  const host = String(value).replace(/^\[|\]$/g, "").toLowerCase();
+  if (net.isIP(host) === 4) {
+    const octets = host.split(".").map(Number);
+    const [a, b] = octets;
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) ||
+      (a === 198 && (b === 18 || b === 19)) || a >= 224;
+  }
+  if (net.isIP(host) === 6) {
+    return host === "::" || host === "::1" || host.startsWith("fc") || host.startsWith("fd") ||
+      host.startsWith("fe80") || host.startsWith("ff") || host.startsWith("::ffff:127.") ||
+      host.startsWith("::ffff:10.") || host.startsWith("::ffff:192.168.") || host.startsWith("::ffff:172.");
+  }
+  return host === "localhost" || host.endsWith(".localhost") || host === "metadata.google.internal";
 }
 
 export {
@@ -836,7 +1042,15 @@ export {
   makeIcon,
   makeIosContents,
   mapWithConcurrency,
+  getPublicConfig,
+  imageBufferFromMessage,
+  isPrivateAddress,
+  normalizeConceptIds,
+  publicConceptResult,
+  publicFinalizeResult,
   readConceptOptions,
   runFinalize,
+  safeName,
   safeRunId,
+  validateRemoteImageUrl,
 };

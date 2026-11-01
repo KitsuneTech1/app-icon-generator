@@ -38,8 +38,6 @@ let renderedFinalIds = new Set();
 fetch("/config")
   .then((r) => r.json())
   .then((c) => {
-    const hint = document.querySelector("#saveHint");
-    if (hint && c.outputDir) hint.textContent = c.outputDir;
     if (c.maxConcepts) countInput.max = String(c.maxConcepts);
   })
   .catch(() => {});
@@ -218,7 +216,7 @@ function addConceptCard(item) {
     thumb.className = "thumb";
     const img = document.createElement("img");
     img.loading = "lazy";
-    img.src = item.url;
+    if (isRunImageUrl(item.url)) img.src = item.url;
     thumb.appendChild(img);
     const tag = document.createElement("span");
     tag.className = "tag";
@@ -235,16 +233,42 @@ function addFinalCard(item) {
   card.className = "final enter";
   const src = conceptGrid.querySelector(`input[value="${item.id}"]`);
   const previewImg = src ? src.parentElement.querySelector(".thumb img") : null;
-  const previewHtml = previewImg ? `<img src="${previewImg.src}">` : "";
+  const thumb = document.createElement("div");
+  thumb.className = "thumb";
+  const previewSrc = previewImg?.getAttribute("src");
+  if (isRunImageUrl(previewSrc)) {
+    const img = document.createElement("img");
+    img.src = previewSrc;
+    thumb.appendChild(img);
+  }
+  const tag = document.createElement("span");
+  tag.className = "tag";
+  tag.textContent = `#${item.id}`;
   if (item.error) {
-    card.innerHTML = `<div class="thumb err">!</div><span class="tag">#${item.id} failed</span>`;
+    thumb.classList.add("err");
+    thumb.textContent = "!";
+    tag.textContent = `#${item.id} failed`;
+    card.append(thumb, tag);
   } else {
-    card.innerHTML =
-      `<div class="thumb">${previewHtml}</div>` +
-      `<span class="tag">#${item.id}</span>` +
-      `<a class="download" href="${item.zip}" download>Download pack</a>`;
+    card.append(thumb, tag);
+    if (isRunZipUrl(item.zip)) {
+      const link = document.createElement("a");
+      link.className = "download";
+      link.href = item.zip;
+      link.download = "";
+      link.textContent = "Download pack";
+      card.appendChild(link);
+    }
   }
   finalGrid.appendChild(card);
+}
+
+function isRunImageUrl(value) {
+  return typeof value === "string" && /^\/runs\/[A-Za-z0-9._-]+\/concepts\/concept-\d+\.png$/.test(value);
+}
+
+function isRunZipUrl(value) {
+  return typeof value === "string" && /^\/runs\/[A-Za-z0-9._-]+\/finals\/[A-Za-z0-9._-]+\.zip$/.test(value);
 }
 
 function showConceptActions() {
