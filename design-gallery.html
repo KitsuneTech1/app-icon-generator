@@ -334,7 +334,7 @@ document.querySelectorAll(".art").forEach(a=>a.innerHTML = FOX);
 
 document.querySelectorAll(".pick").forEach(btn=>{
   btn.addEventListener("click",()=>{
-    banner.textContent = `✓ Picked #${btn.dataset.n} — ${btn.dataset.name}. Tell Claude: "use design ${btn.dataset.n}".`;
+    banner.textContent = `✓ Picked #${btn.dataset.n} — ${btn.dataset.name}. Use design: "use design ${btn.dataset.n}".`;
     banner.classList.add("show");
     clearTimeout(window._pt);
     window._pt = setTimeout(()=>banner.classList.remove("show"), 6000);
